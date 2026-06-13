@@ -18,6 +18,11 @@ export async function route(request: Request, env: AppEnv, _ctx: ExecutionContex
     return withCommonHeaders(await handleInitial(request, env), request, env);
   }
 
+
+  if (path === '/api/diagnostics' && request.method === 'GET') {
+    return withCommonHeaders(await handleDiagnostics(request, env), request, env);
+  }
+
   if (path === '/api/cards') {
     const response = request.method === 'GET'
       ? await handleCardsGet(request, env)
@@ -68,15 +73,49 @@ async function handleInitial(request: Request, env: AppEnv): Promise<Response> {
     authenticated: user.authenticated,
     today: todayJst(),
     metadata: {
-      releaseId: 'cloudflare-worker-ts-r0.2',
-      appVersion: '0.2.0-worker-ts-r46-port',
-      displayVersion: 'Cloudflare移植 初期版 TypeScript / Workers Assets',
+      releaseId: 'cloudflare-worker-ts-r0.3',
+      appVersion: '0.3.0-worker-ts-r46-port-route-split',
+      displayVersion: 'Cloudflare移植 r0.3 TypeScript / Workers Assets',
       schemaVersion: 'r46-d1-0001',
       buildLabel: 'business-card-cloudflare-worker-typescript',
-      buildBadge: 'Cloudflare / TypeScript / Workers / Static Assets / D1 / R2',
+      buildBadge: 'Cloudflare / TypeScript / Login index / Register page / D1 / R2',
       commentLanguage: 'ja',
       distRoot: 'public'
     }
+  });
+}
+
+
+async function handleDiagnostics(request: Request, env: AppEnv): Promise<Response> {
+  const user = assertAllowedUser(request, env);
+  const allowedEmailDomains = (env.ALLOWED_EMAIL_DOMAINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return json({
+    ok: true,
+    user,
+    bindings: {
+      assets: Boolean(env.ASSETS),
+      db: Boolean(env.DB),
+      cardImages: Boolean(env.CARD_IMAGES),
+      ocrApiUrl: Boolean(env.OCR_API_URL)
+    },
+    config: {
+      appTitle: env.APP_TITLE || '名刺共有台帳',
+      allowedEmailDomains,
+      maxSearchResults: Number(env.MAX_SEARCH_RESULTS || 100)
+    },
+    routes: [
+      { path: '/', description: 'ログイン/ランチャー画面' },
+      { path: '/register.html', description: '登録・検索画面' },
+      { path: '/api/initial', description: '初期表示メタデータ' },
+      { path: '/api/diagnostics', description: 'Cloudflare binding確認' },
+      { path: '/api/cards', description: '名刺検索・登録' },
+      { path: '/api/cards/:id', description: '名刺更新・論理削除' },
+      { path: '/api/images/:key', description: 'R2画像取得' },
+      { path: '/api/ocr', description: 'Apps Script OCR APIプロキシ' }
+    ]
   });
 }
 

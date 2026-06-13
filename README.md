@@ -80,3 +80,22 @@ Cloudflare のビルド環境はUTC日時で判定されるため、日本時間
 
 この版では `wrangler.json` と `wrangler.with-bindings.example.json` の `compatibility_date` を `2025-12-01` に固定しています。
 Cloudflare側の日時に左右されにくくするため、当日や未来日ではなく、確実に過去日の安定した日付を指定してください。
+
+
+## r0.3 画面分割
+
+`index.html` はログイン/ランチャー画面に変更しました。登録・検索画面は以下です。
+
+```text
+/register.html
+```
+
+互換用に `/launcher.html` も残していますが、新しい入口は `/` または `/index.html` です。
+
+追加確認用APIとして以下を用意しています。
+
+```text
+/api/diagnostics
+```
+
+このAPIで、D1 binding `DB`、R2 binding `CARD_IMAGES`、OCR API URL設定、Cloudflare Access由来のユーザー情報を確認できます。

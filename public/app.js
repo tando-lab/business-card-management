@@ -1,4 +1,3 @@
-"use strict";
 const state = {
     image: null,
     editingRecord: null,
@@ -319,4 +318,5 @@ function escapeHtml(value) {
 function escapeAttr(value) {
     return escapeHtml(value).replace(/'/g, '&#39;');
 }
+export {};
 //# sourceMappingURL=app.js.map

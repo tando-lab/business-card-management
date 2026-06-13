@@ -402,3 +402,5 @@ function escapeHtml(value: unknown): string {
 function escapeAttr(value: unknown): string {
   return escapeHtml(value).replace(/'/g, '&#39;');
 }
+
+export {};

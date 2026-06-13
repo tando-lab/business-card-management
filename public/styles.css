@@ -110,3 +110,16 @@ code { background: #f3f4f6; padding: 2px 5px; border-radius: 5px; }
   .header-inner { flex-direction: column; }
   h1 { font-size: 21px; }
 }
+
+.login-card { width: min(760px, 100%); }
+.login-kicker { color: var(--primary); font-weight: 800; letter-spacing: .08em; margin-bottom: 8px; }
+.login-lead { color: var(--muted); line-height: 1.7; margin: 0 0 16px; }
+.status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.status-item { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #fafafa; }
+.status-label { color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.status-value { font-weight: 800; line-height: 1.5; word-break: break-word; }
+.login-details { margin-top: 16px; color: var(--muted); line-height: 1.7; }
+.login-details summary { color: var(--text); cursor: pointer; font-weight: 800; }
+@media (max-width: 720px) {
+  .status-grid { grid-template-columns: 1fr; }
+}

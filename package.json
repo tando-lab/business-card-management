@@ -1,6 +1,6 @@
 {
   "name": "business-card-cloudflare-worker",
-  "version": "0.2.0-worker-ts-r46-port",
+  "version": "0.3.0-worker-ts-r46-port-route-split",
   "private": true,
   "type": "module",
   "scripts": {
