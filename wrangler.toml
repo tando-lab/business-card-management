@@ -1,0 +1,23 @@
+name = "business-card-cloudflare"
+compatibility_date = "2026-06-14"
+pages_build_output_dir = "public"
+
+# D1 database binding. After running `npm run d1:create`, replace database_id.
+[[d1_databases]]
+binding = "DB"
+database_name = "business-card-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Optional but recommended for storing original/cropped business card images.
+[[r2_buckets]]
+binding = "CARD_IMAGES"
+bucket_name = "business-card-images"
+
+[vars]
+APP_TITLE = "名刺共有台帳"
+ALLOWED_EMAIL_DOMAINS = "nextbrain.pro,nextbrain.biz"
+ALLOW_DEV_USER_HEADER = "true"
+MAX_SEARCH_RESULTS = "100"
+IMAGE_MAX_BYTES = "8388608"
+OCR_API_URL = ""
+OCR_API_TOKEN = ""

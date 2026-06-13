@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>名刺共有台帳</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1 id="appTitle">名刺共有台帳</h1>
+        <div class="sub" id="userInfo">読み込み中...</div>
+      </div>
+      <a class="launcher-link" href="/launcher.html">ランチャー</a>
+    </div>
+    <div class="build-badge" id="buildBadge">Cloudflare移植 初期版</div>
+  </header>
+
+  <main>
+    <div id="globalMessage" class="message info"></div>
+    <div class="tabs">
+      <button class="tab active" type="button" data-tab="register">登録</button>
+      <button class="tab" type="button" data-tab="search">検索</button>
+    </div>
+
+    <section id="registerPanel" class="panel active">
+      <div class="card">
+        <h2>名刺登録</h2>
+        <div id="saveMessage" class="message"></div>
+        <form id="cardForm">
+          <div class="grid">
+            <div class="full">
+              <h3>名刺画像</h3>
+              <div class="file-box">
+                <label for="imageFile">ファイルを選択 / カメラで撮影</label>
+                <input id="imageFile" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+                <div class="hint">初期版では、選択画像を代表画像としてR2へ保存します。r46のOpenCV切り抜き・詳細品質判定は次段階で移植予定です。</div>
+                <div class="preview-grid">
+                  <div class="preview-card">
+                    <div class="preview-title">選択画像</div>
+                    <img id="imagePreview" class="preview" alt="画像プレビュー">
+                  </div>
+                </div>
+                <div class="ocr-panel">
+                  <div class="ocr-title">OCR抽出テキスト</div>
+                  <div class="ocr-actions">
+                    <button id="ocrButton" class="secondary" type="button" disabled>画像読取</button>
+                    <button id="clearOcrButton" class="ghost" type="button" disabled>OCRクリア</button>
+                  </div>
+                  <textarea id="ocrText" readonly placeholder="OCR_API_URL設定後、画像読取でApps Script OCR APIを呼び出します。"></textarea>
+                  <div id="ocrStatus" class="hint">OCR未実行</div>
+                </div>
+              </div>
+            </div>
+
+            <div><label for="company">会社名 <span class="required">*</span></label><input id="company" name="company" type="text" autocomplete="organization"></div>
+            <div><label for="name">氏名 <span class="required">*</span></label><input id="name" name="name" type="text" autocomplete="name"></div>
+            <div><label for="kana">フリガナ</label><input id="kana" name="kana" type="text"></div>
+            <div><label for="department">部署</label><input id="department" name="department" type="text" autocomplete="organization-title"></div>
+            <div><label for="position">役職</label><input id="position" name="position" type="text"></div>
+            <div><label for="phone">電話番号</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div>
+            <div><label for="email">メール</label><input id="email" name="email" type="email" autocomplete="email"></div>
+            <div><label for="website">URL</label><input id="website" name="website" type="url" placeholder="https://example.com"></div>
+            <div class="full"><label for="address">住所</label><input id="address" name="address" type="text" autocomplete="street-address"></div>
+            <div><label for="owner">名刺交換者</label><input id="owner" name="owner" type="text" placeholder="社内担当者名"></div>
+            <div><label for="exchangeDate">交換日</label><input id="exchangeDate" name="exchangeDate" type="date"></div>
+            <div class="full"><label for="tags">タグ</label><input id="tags" name="tags" type="text" placeholder="例：見込み, 既存顧客, 協力会社"></div>
+            <div class="full"><label for="group">グループ</label><input id="group" name="group" type="text" placeholder="例：営業部, 関西, 仕入先A"></div>
+            <div class="full"><label for="memo">メモ</label><textarea id="memo" name="memo" placeholder="商談内容、紹介経路、次回アクションなど"></textarea></div>
+          </div>
+          <div class="hint">会社名または氏名のどちらかは必須です。画像なしでも登録できます。</div>
+          <div class="actions"><button id="saveButton" class="primary" type="submit">登録する</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="searchPanel" class="panel">
+      <div class="card">
+        <h2>名刺検索</h2>
+        <div id="searchMessage" class="message"></div>
+        <div class="grid">
+          <div class="full"><label for="keyword">キーワード</label><input id="keyword" type="search" placeholder="会社名、氏名、メール、メモ、OCRなど"></div>
+          <div><label for="searchOwner">名刺交換者</label><input id="searchOwner" type="text"></div>
+          <div><label for="searchTag">タグ</label><input id="searchTag" type="text"></div>
+        </div>
+        <div class="actions"><button id="searchButton" class="secondary" type="button">検索する</button></div>
+        <div id="resultCount" class="result-count"></div>
+        <div id="results"></div>
+      </div>
+    </section>
+  </main>
+
+  <template id="resultTemplate">
+    <article class="result-item">
+      <div class="result-title"></div>
+      <div class="result-meta"></div>
+      <div class="result-body"></div>
+      <div class="result-actions">
+        <button class="ghost edit-button" type="button">編集</button>
+        <button class="danger delete-button" type="button">削除</button>
+      </div>
+    </article>
+  </template>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

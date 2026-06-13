@@ -1,0 +1,21 @@
+{
+  "name": "business-card-cloudflare",
+  "version": "0.1.0-ts-r46-port",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:client && npm run typecheck",
+    "build:client": "tsc -p tsconfig.client.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "npm run build:client && wrangler pages dev public --compatibility-date=2026-06-14 --d1 DB=business-card-db --r2 CARD_IMAGES=business-card-images",
+    "deploy": "npm run build:client && wrangler pages deploy public --project-name business-card-cloudflare",
+    "d1:create": "wrangler d1 create business-card-db",
+    "d1:migrate:local": "wrangler d1 migrations apply business-card-db --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply business-card-db --remote",
+    "types:cloudflare": "wrangler types"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "wrangler": "^4.0.0"
+  }
+}

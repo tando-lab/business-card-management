@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "lib": ["ES2022", "DOM"],
+    "rootDir": "src",
+    "outDir": "public",
+    "sourceMap": true,
+    "declaration": false,
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}
