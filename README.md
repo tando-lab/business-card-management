@@ -40,6 +40,7 @@ business-card-cloudflare/
     01_r46_function_inventory.md
     02_cloudflare_min_architecture.md
     03_migration_plan.md
+    04_cloudflare_pages_build_settings.md
   package.json
   tsconfig.json
   tsconfig.client.json
@@ -87,11 +88,27 @@ npm run dev
 
 ## デプロイ
 
+### Cloudflare Pages の Git 連携でデプロイする場合
+
+Cloudflare Pages のビルド設定は以下にします。
+
+```text
+Build command: npm run build
+Build output directory: public
+Deploy command: 空欄、または npx wrangler pages deploy public --project-name <Pages project name>
+```
+
+`npx wrangler deploy` は Workers 用のデプロイコマンドです。このプロジェクトは Pages / Pages Functions 構成のため、`npx wrangler deploy` を指定すると `Missing entry-point to Worker script or to assets directory` で失敗します。
+
+### CLI から直接デプロイする場合
+
 ```bash
 npm run build
 npm run d1:migrate:remote
-npm run deploy
+npx wrangler pages deploy public --project-name <Pages project name>
 ```
+
+`package.json` の `npm run deploy` は `wrangler pages deploy public` を実行します。プロジェクト名の選択を求められる場合は、上記のように `--project-name` を付けて実行してください。
 
 本番では Cloudflare Access を Pages プロジェクトに設定し、Google認証で以下ドメインを許可してください。
 
