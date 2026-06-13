@@ -66,3 +66,17 @@ npm run d1:migrate:remote
 ## 注意
 
 この版は「Cloudflareでビルド・デプロイできる初期土台」を優先しています。D1/R2/OCR/API境界が固まった後、GAS r46 の設計思想に近い `domain / usecase / repository / service / client` へ再分割する前提です。
+
+
+## 直近のCloudflare build error対応
+
+Cloudflare のビルドログで次のエラーが出る場合があります。
+
+```text
+Can't set compatibility date in the future
+```
+
+Cloudflare のビルド環境はUTC日時で判定されるため、日本時間では当日でも、Cloudflare側では前日扱いになり、`compatibility_date` が未来日として拒否されることがあります。
+
+この版では `wrangler.json` と `wrangler.with-bindings.example.json` の `compatibility_date` を `2025-12-01` に固定しています。
+Cloudflare側の日時に左右されにくくするため、当日や未来日ではなく、確実に過去日の安定した日付を指定してください。

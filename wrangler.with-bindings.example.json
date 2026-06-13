@@ -1,7 +1,7 @@
 {
   "name": "business-card-management",
   "main": "src/index.ts",
-  "compatibility_date": "2026-06-14",
+  "compatibility_date": "2025-12-01",
   "upload_source_maps": true,
   "assets": {
     "directory": "./public",
