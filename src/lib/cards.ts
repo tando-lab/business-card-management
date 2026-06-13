@@ -97,7 +97,7 @@ export async function createCard(env: AppEnv, payload: RawCardPayload, actor: st
   const imageRefs = await saveCardImages(env, card, id);
   const searchKey = buildSearchKey(card);
 
-  await env.DB.prepare(`
+  await db(env).prepare(`
     INSERT INTO business_cards (
       id, record_status, created_at, updated_at, revision,
       company, name, kana, department, position, phone, email, address, website,
@@ -139,7 +139,7 @@ export async function updateCard(env: AppEnv, id: string, payload: RawCardPayloa
   const nextRevision = Number(current.revision || 0) + 1;
   const searchKey = buildSearchKey(card);
 
-  await env.DB.prepare(`
+  await db(env).prepare(`
     UPDATE business_cards SET
       record_status = ?, updated_at = ?, revision = ?,
       company = ?, name = ?, kana = ?, department = ?, position = ?, phone = ?, email = ?, address = ?, website = ?,
@@ -166,7 +166,7 @@ export async function deleteCard(env: AppEnv, id: string, expected: MutationPrec
   assertMutationPrecondition(current, expected.expectedUpdatedAt, expected.expectedRevision);
   const now = nowJstText();
   const nextRevision = Number(current.revision || 0) + 1;
-  await env.DB.prepare(`
+  await db(env).prepare(`
     UPDATE business_cards SET
       record_status = ?, updated_at = ?, revision = ?, updated_by = ?, delete_flag = 'TRUE', deleted_at = ?, deleted_by = ?
     WHERE id = ? AND record_status = ?
@@ -196,7 +196,7 @@ export async function searchCards(env: AppEnv, criteria: SearchCriteria = {}) {
   }
   binds.push(limit);
 
-  const result = await env.DB.prepare(`
+  const result = await db(env).prepare(`
     SELECT * FROM business_cards
     WHERE ${conditions.join(' AND ')}
     ORDER BY updated_at DESC, created_at DESC
@@ -207,7 +207,7 @@ export async function searchCards(env: AppEnv, criteria: SearchCriteria = {}) {
 }
 
 async function getActiveRow(env: AppEnv, id: string): Promise<BusinessCardRow> {
-  const row = await env.DB
+  const row = await db(env)
     .prepare('SELECT * FROM business_cards WHERE id = ? AND record_status = ?')
     .bind(id, ACTIVE)
     .first<BusinessCardRow>();
@@ -360,4 +360,10 @@ function mimeToExtension(mime: string): string {
   if (mime === 'image/png') return 'png';
   if (mime === 'image/webp') return 'webp';
   return 'jpg';
+}
+
+
+function db(env: AppEnv): D1Database {
+  if (!env.DB) throw new HttpError(500, 'CONFIG_ERROR', 'D1 binding DB が未設定です。');
+  return env.DB;
 }

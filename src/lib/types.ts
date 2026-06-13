@@ -1,5 +1,6 @@
 export interface AppEnv {
-  DB: D1Database;
+  ASSETS?: Fetcher;
+  DB?: D1Database;
   CARD_IMAGES?: R2Bucket;
   APP_TITLE?: string;
   ALLOWED_EMAIL_DOMAINS?: string;

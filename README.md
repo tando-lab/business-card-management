@@ -1,133 +1,68 @@
-# business-card-cloudflare
+# business-card-cloudflare-worker
 
-`business-card-management-r46-schema-diagnostics-ocr.zip` を基準に、OCR以外の名刺管理機能を Cloudflare Pages / Pages Functions / D1 / R2 へ段階移植するための TypeScript 初期プロジェクトです。
+名刺管理アプリ r46 を、Cloudflare Workers + Static Assets + D1 + R2 向けに移植する初期TypeScript版です。
 
-## 目的
+前回版の Cloudflare Pages Functions 構成ではなく、添付された `jl-api.zip` と同じく `wrangler deploy` でビルド・デプロイできる Worker 構成に寄せています。
 
-Apps Script Webアプリをユーザーが直接開くと、Chromeで複数Googleアカウントを使っている環境において `script.google.com/macros/u/N/s/...` へ寄せられ、権限のないアカウント側で「現在、ファイルを開くことができません」画面になることがあります。
-
-この初期版では、ユーザーが直接開く入口を Cloudflare Pages に移し、Apps Script は当面 OCR JSON API としてだけ残せる構成にします。
-
-## TypeScript構成
+## 構成
 
 ```text
-business-card-cloudflare/
-  public/                  # Cloudflare Pagesで配信する静的UI
-    index.html
-    launcher.html
-    app.js                 # src/app.ts から生成
-    app.js.map
-    styles.css
+business-card-cloudflare-worker/
+  public/                 # 静的HTML/CSS/JS。Workers Static Assetsで配信
   src/
-    app.ts                 # フロントUI TypeScript
-  functions/               # Cloudflare Pages Functions TypeScript
-    _middleware.ts
-    _lib/
-      cards.ts             # CRUD / 正規化 / D1 / R2保存
-      http.ts              # JSON応答 / エラー / 認証補助
-      types.ts             # AppEnv / payload / record 型
-    api/
-      initial.ts
-      cards/index.ts
-      cards/[id].ts
-      images/[key].ts
-      ocr.ts
-  types/
-    cloudflare-pages.d.ts  # 最小のPages/D1/R2型定義
-  migrations/
-    0001_init.sql
-  docs/
-    01_r46_function_inventory.md
-    02_cloudflare_min_architecture.md
-    03_migration_plan.md
-    04_cloudflare_pages_build_settings.md
-  package.json
-  tsconfig.json
-  tsconfig.client.json
-  wrangler.toml
+    index.ts              # Worker entry point
+    router.ts             # /api/* と静的assetsの振り分け
+    app.ts                # フロントTypeScript元ファイル
+    lib/                  # D1/R2/HTTP/型
+  migrations/             # D1 schema
+  wrangler.json           # wrangler deploy 用。初期状態ではD1/R2 binding未設定
+  wrangler.with-bindings.example.json
 ```
 
-## r46から移植した機能
+## Cloudflare の設定
 
-- 登録: `saveCard` / `registerCard_` / `executeCreateCardUseCase_` 相当
-- 検索: `searchCards` / `executeSearchCardsUseCase_` 相当
-- 更新: `updateCard` / `executeUpdateCardUseCase_` 相当
-- 削除: `deleteCard` / `executeDeleteCardUseCase_` 相当
-- 論理削除: `recordStatus=DELETED` / `deleteFlag=TRUE`
-- 楽観ロック: `expectedUpdatedAt` / `expectedRevision`
-- 画像保存: Google Drive ではなく R2 に保存
-- 台帳保存: Google Spreadsheet ではなく D1 に保存
-- OCR: Cloudflare側では直接OCRせず、`/api/ocr` から Apps Script OCR API へプロキシする口を用意
-
-## 初期セットアップ
+Cloudflare の Deploy command が次のままでも動く構成です。
 
 ```bash
-cd business-card-cloudflare
-npm install
+npx wrangler deploy
+```
+
+Build command は空欄、または任意で次にします。
+
+```bash
+npm run build
+```
+
+## D1/R2 binding
+
+初回ビルドを通しやすくするため、`wrangler.json` には D1/R2 binding を直接書いていません。
+D1/R2を作成後、`wrangler.with-bindings.example.json` を参考に `wrangler.json` へ追記してください。
+
+```bash
 npm run d1:create
-```
-
-作成された D1 database id を `wrangler.toml` の `database_id` に反映します。
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "business-card-db"
-database_id = "実際のD1_DATABASE_ID"
-```
-
-## ローカル検証
-
-```bash
-npm run build
-npm run d1:migrate:local
-npm run dev
-```
-
-`dev` は `src/app.ts` を `public/app.js` にビルドしてから `wrangler pages dev` を起動します。
-
-## デプロイ
-
-### Cloudflare Pages の Git 連携でデプロイする場合
-
-Cloudflare Pages のビルド設定は以下にします。
-
-```text
-Build command: npm run build
-Build output directory: public
-Deploy command: 空欄、または npx wrangler pages deploy public --project-name <Pages project name>
-```
-
-`npx wrangler deploy` は Workers 用のデプロイコマンドです。このプロジェクトは Pages / Pages Functions 構成のため、`npx wrangler deploy` を指定すると `Missing entry-point to Worker script or to assets directory` で失敗します。
-
-### CLI から直接デプロイする場合
-
-```bash
-npm run build
 npm run d1:migrate:remote
-npx wrangler pages deploy public --project-name <Pages project name>
 ```
 
-`package.json` の `npm run deploy` は `wrangler pages deploy public` を実行します。プロジェクト名の選択を求められる場合は、上記のように `--project-name` を付けて実行してください。
+必要なbinding名は以下です。
 
-本番では Cloudflare Access を Pages プロジェクトに設定し、Google認証で以下ドメインを許可してください。
+| binding | 用途 |
+|---|---|
+| `DB` | D1 名刺台帳 |
+| `CARD_IMAGES` | R2 画像保存 |
+| `ASSETS` | public配信 |
 
-```text
-nextbrain.pro
-nextbrain.biz
-```
+## API
 
-## OCR API連携
+| API | 内容 |
+|---|---|
+| `GET /api/initial` | 初期表示情報 |
+| `GET /api/cards` | 検索 |
+| `POST /api/cards` | 登録 |
+| `PUT/PATCH /api/cards/:id` | 更新 |
+| `DELETE /api/cards/:id` | 論理削除 |
+| `GET /api/images/:key` | R2画像取得 |
+| `POST /api/ocr` | Apps Script OCR APIプロキシ |
 
-Apps Script 側に OCR JSON API を用意した後、`wrangler.toml` または Cloudflare Pages の環境変数に以下を設定します。
+## 注意
 
-```toml
-OCR_API_URL = "https://script.google.com/macros/s/xxxxx/exec"
-OCR_API_TOKEN = "任意の共有トークン"
-```
-
-Cloudflare UIから `/api/ocr` を呼ぶと、Worker/Pages Functions側が Apps Script OCR API へサーバー間通信します。ユーザーが直接Apps Script WebアプリURLを開かない構成にするため、`/macros/u/N/s/...` 問題を回避しやすくなります。
-
-## 補足
-
-`types/cloudflare-pages.d.ts` は、初期検証をZIP単体でも読みやすくするための最小型です。実プロジェクトでは `npm run types:cloudflare` で Wrangler 生成型を作成し、必要に応じてそちらへ置換してください。
+この版は「Cloudflareでビルド・デプロイできる初期土台」を優先しています。D1/R2/OCR/API境界が固まった後、GAS r46 の設計思想に近い `domain / usecase / repository / service / client` へ再分割する前提です。

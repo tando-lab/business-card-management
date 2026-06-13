@@ -1,17 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "lib": ["ES2022", "DOM"],
-    "rootDir": "src",
+    "target": "es2020",
+    "lib": ["es2020", "dom"],
+    "module": "es2020",
+    "moduleResolution": "bundler",
     "outDir": "public",
     "sourceMap": true,
-    "declaration": false,
-    "types": []
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/app.ts"]
 }
