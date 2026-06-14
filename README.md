@@ -7,10 +7,6 @@ Storage JSON Protocol v1 (`bc-storage.v1`) を受け取り、Cloudflare D1 の `
 ```text
 POST /api/storage
 GET  /api/health
-GET  /
-GET  /REGISTER_BC
-GET  /QUERY_BC
-GET  /OPEN_BC
 ```
 
 `POST /api/storage` は `X-API-Key` ヘッダー必須です。
@@ -106,28 +102,3 @@ X-API-Key: <BUSINESS_CARD_API_KEY>
 認証エラー時は、キー値を返さず、ヘッダー有無・受信キー長・期待キー長のみを診断情報として返します。
 
 `business-card-service` manifest includes `https://www.googleapis.com/auth/script.external_request` for `UrlFetchApp.fetch()`。
-
-
-## r56: Cloudflare入口ランチャー
-
-Cloudflare Workerを安定した入口URLとして利用し、GAS Webアプリへ誘導するランチャーを追加しました。
-
-```text
-GET /
-GET /REGISTER_BC
-GET /QUERY_BC
-GET /OPEN_BC?email=<Googleアカウント>&view=register|search
-```
-
-`/OPEN_BC` は `nextbrain.pro` / `nextbrain.biz` のメールアドレスだけを許可し、GAS Webアプリへ次のパラメータ付きで302リダイレクトします。
-
-```text
-?authuser=<email>&view=register
-?authuser=<email>&view=search
-```
-
-GAS WebアプリURLはWorkerのruntime variableで変更できます。
-
-```text
-GAS_WEB_APP_URL=https://script.google.com/macros/s/<deployment-id>/exec
-```

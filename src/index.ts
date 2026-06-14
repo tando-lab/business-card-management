@@ -167,42 +167,34 @@ interface DbRow {
 }
 
 const API_VERSION = 'bc-storage.v1' as const;
+const DEFAULT_GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxwpIIkhm2uwfz36Jv2XDOcZqv2XtDyTYyNeMTVJELwWKFGXy5X34HXbXGy0US5TmaogA/exec';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return cors(json({ ok: true }), 204);
     const url = new URL(request.url);
 
-    if (request.method === 'GET') {
-      const launcher = handleLauncherRoute(request, env, url);
-      if (launcher) return launcher;
-
-      if (url.pathname === '/api/health') {
-        return json({
-          ok: true,
-          service: 'business-card-d1-api',
-          schemaVersion: 'r58',
-          auth: {
-            requiredHeader: 'X-API-Key',
-            workerApiKeyConfigured: Boolean(String(env.BUSINESS_CARD_API_KEY || '').trim())
-          },
-          launcher: {
-            enabled: true,
-            gasWebAppUrlConfigured: Boolean(getGasWebAppUrl(env)),
-            allowedEmailDomains: ALLOWED_EMAIL_DOMAINS
-          }
-        });
-      }
-
-
-      // Cloudflare のルートディレクトリ設定や手入力URLの揺れに備え、
-      // API以外のGETは入口ランチャーへフォールバックする。
-      if (!normalizePath(url.pathname).startsWith('/API/')) {
-        return launcherHtml(url, 'register');
-      }
+    if (request.method === 'GET' && url.pathname === '/') {
+      return loginPage(env);
     }
 
-    if (request.method !== 'POST' || url.pathname !== '/api/storage') return json({ ok: false, message: 'not found' }, 404);
+    if (request.method === 'GET' && (url.pathname === '/api' || url.pathname === '/api/' || url.pathname === '/api/health')) {
+      return json({
+        ok: true,
+        service: 'business-card-d1-api',
+        schemaVersion: 'r60',
+        login: '/',
+        storageApi: '/api/storage',
+        auth: {
+          requiredHeader: 'X-API-Key',
+          workerApiKeyConfigured: Boolean(String(env.BUSINESS_CARD_API_KEY || '').trim())
+        }
+      });
+    }
+
+    const isStorageApi = request.method === 'POST' && (url.pathname === '/api/storage' || url.pathname === '/api' || url.pathname === '/api/');
+    if (!isStorageApi) return json({ ok: false, message: 'not found' }, 404);
+
     const auth = inspectApiKey(request, env);
     if (!auth.authorized) return json(unauthorizedResponse(auth), 401);
     let body: StorageJsonRequest;
@@ -212,132 +204,6 @@ export default {
     catch (err) { return json(error(body, 'BACKEND_ERROR', err instanceof Error ? err.message : String(err)), 500); }
   }
 };
-
-
-const DEFAULT_GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxwpIIkhm2uwfz36Jv2XDOcZqv2XtDyTYyNeMTVJELwWKFGXy5X34HXbXGy0US5TmaogA/exec';
-const ALLOWED_EMAIL_DOMAINS = ['nextbrain.pro', 'nextbrain.biz'];
-type LaunchView = 'register' | 'search';
-
-function handleLauncherRoute(request: Request, env: Env, url: URL): Response | null {
-  const path = normalizePath(url.pathname);
-  if (path === '/') return launcherHtml(url, 'register');
-  if (path === '/REGISTER_BC') return launcherOrRedirect(request, env, url, 'register');
-  if (path === '/QUERY_BC') return launcherOrRedirect(request, env, url, 'search');
-  if (path === '/OPEN_BC') return openGasApp(request, env, url);
-  return null;
-}
-
-function launcherOrRedirect(request: Request, env: Env, url: URL, view: LaunchView): Response {
-  const email = getEmailParam(url);
-  if (email) return redirectToGas(request, env, email, view);
-  return launcherHtml(url, view);
-}
-
-function openGasApp(request: Request, env: Env, url: URL): Response {
-  const view = normalizeLaunchView(url.searchParams.get('view'));
-  const email = getEmailParam(url);
-  if (!email) return launcherHtml(url, view, 'Googleアカウントのメールアドレスを入力してください。', 400);
-  return redirectToGas(request, env, email, view);
-}
-
-function redirectToGas(request: Request, env: Env, email: string, view: LaunchView): Response {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!isAllowedEmail(normalizedEmail)) {
-    return launcherHtml(new URL(request.url), view, '許可されたメールドメインではありません。nextbrain.pro または nextbrain.biz のGoogleアカウントを入力してください。', 400, normalizedEmail);
-  }
-
-  const gasUrl = getGasWebAppUrl(env);
-  if (!gasUrl) {
-    return launcherHtml(new URL(request.url), view, 'GAS_WEB_APP_URL が未設定です。Cloudflare Worker の変数にGAS WebアプリURLを設定してください。', 500, normalizedEmail);
-  }
-
-  const target = new URL(gasUrl);
-  target.searchParams.set('authuser', normalizedEmail);
-  target.searchParams.set('view', view);
-  return Response.redirect(target.toString(), 302);
-}
-
-function launcherHtml(url: URL, defaultView: LaunchView, message = '', status = 200, email = ''): Response {
-  const escapedEmail = escapeHtml(email || url.searchParams.get('email') || url.searchParams.get('authuser') || '');
-  const escapedMessage = escapeHtml(message);
-  const registerClass = defaultView === 'register' ? ' primary' : '';
-  const searchClass = defaultView === 'search' ? ' primary' : '';
-  const html = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>名刺共有台帳 入口</title>
-  <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #f6f7fb; color: #202124; }
-    header { background: #1a73e8; color: #fff; padding: 20px 16px; }
-    main { max-width: 720px; margin: 24px auto; padding: 0 16px; }
-    .card { background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 24px; }
-    h1 { margin: 0; font-size: 1.35rem; }
-    h2 { margin: 0 0 12px; font-size: 1.2rem; }
-    p { line-height: 1.7; }
-    label { display: block; font-weight: 700; margin: 16px 0 6px; }
-    input[type="email"] { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #c7d0dd; border-radius: 10px; font: inherit; }
-    .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
-    button { width: 100%; border: 1px solid #1a73e8; border-radius: 12px; padding: 13px 16px; background: #fff; color: #1a73e8; font-weight: 700; font-size: 1rem; cursor: pointer; }
-    button.primary { background: #1a73e8; color: #fff; }
-    button:hover { filter: brightness(.98); }
-    .message { margin: 12px 0; padding: 12px; border-radius: 10px; background: #fdecea; color: #b3261e; }
-    .note { color: #5f6368; font-size: .92rem; }
-    @media (max-width: 640px) { .button-grid { grid-template-columns: 1fr; } main { margin-top: 16px; } }
-  </style>
-</head>
-<body>
-  <header><h1>名刺共有台帳 入口</h1></header>
-  <main>
-    <section class="card">
-      <h2>Googleアカウントを指定して開く</h2>
-      <p class="note">Cloudflareは入口URLとD1 APIを担当し、画面表示とGoogleログインセッションはGAS側で行います。</p>
-      ${escapedMessage ? `<div class="message">${escapedMessage}</div>` : ''}
-      <form method="GET" action="/OPEN_BC">
-        <label for="email">Googleアカウント</label>
-        <input id="email" name="email" type="email" value="${escapedEmail}" placeholder="your.name@nextbrain.pro" autocomplete="email" required>
-        <div class="button-grid" aria-label="開く画面">
-          <button class="${registerClass}" type="submit" name="view" value="register">登録画面を開く</button>
-          <button class="${searchClass}" type="submit" name="view" value="search">検索画面を開く</button>
-        </div>
-      </form>
-      <p class="note">許可ドメイン: nextbrain.pro / nextbrain.biz</p>
-    </section>
-  </main>
-</body>
-</html>`;
-  return new Response(html, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-}
-
-function normalizePath(pathname: string): string {
-  const path = pathname.replace(/\/+$/, '') || '/';
-  return path === '/' ? '/' : path.toUpperCase();
-}
-
-function getEmailParam(url: URL): string {
-  return String(url.searchParams.get('email') || url.searchParams.get('authuser') || '').trim();
-}
-
-function normalizeLaunchView(value: string | null): LaunchView {
-  const normalized = String(value || '').trim().toLowerCase();
-  return normalized === 'search' || normalized === 'query' || normalized === 'QUERY_BC'.toLowerCase() ? 'search' : 'register';
-}
-
-function isAllowedEmail(email: string): boolean {
-  const domain = email.split('@').pop() || '';
-  return ALLOWED_EMAIL_DOMAINS.includes(domain.toLowerCase());
-}
-
-function getGasWebAppUrl(env: Env): string {
-  return String(env.GAS_WEB_APP_URL || DEFAULT_GAS_WEB_APP_URL).trim();
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] || ch));
-}
 
 async function dispatch(req: StorageJsonRequest, env: Env): Promise<StorageJsonResponse> {
   if (req.operation === 'card.create') return createCard(req, env);
@@ -653,6 +519,54 @@ function checkConflict(current: CardStorageRecord, expectedUpdatedAt: string, ex
 function ok(req: StorageJsonRequest, data: NonNullable<StorageJsonResponse['data']>, message = ''): StorageJsonResponse { return { ok: true, apiVersion: API_VERSION, operation: req.operation, requestId: req.requestId, data, message }; }
 function error(req: Partial<StorageJsonRequest>, code: string, message: string): StorageJsonResponse { return { ok: false, apiVersion: API_VERSION, operation: req.operation || 'card.diagnostics', requestId: req.requestId || '', error: { code, message }, message }; }
 function statusForError(code?: string): number { if (code === 'UNAUTHORIZED') return 401; if (code === 'NOT_FOUND') return 404; if (code === 'CONFLICT') return 409; if (code === 'VALIDATION_ERROR' || code === 'BAD_REQUEST') return 400; return 500; }
+function loginPage(env: Env): Response {
+  const gasUrl = String(env.GAS_WEB_APP_URL || DEFAULT_GAS_WEB_APP_URL).trim() || DEFAULT_GAS_WEB_APP_URL;
+  const safeGasUrl = escapeHtmlAttr(gasUrl);
+  const html = `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>名刺管理ログイン</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f4f6fb; color: #111827; }
+    .page { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 72px 16px; box-sizing: border-box; }
+    .card { width: min(760px, 100%); background: #fff; border-radius: 16px; box-shadow: 0 18px 50px rgba(15, 23, 42, .10); padding: 32px; box-sizing: border-box; }
+    h1 { margin: 0 0 28px; font-size: 28px; line-height: 1.3; }
+    form { display: grid; grid-template-columns: auto minmax(240px, 1fr) auto; gap: 12px; align-items: center; }
+    label { font-weight: 700; white-space: nowrap; }
+    input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; font-size: 16px; }
+    button { border: 0; border-radius: 10px; background: #2563eb; color: #fff; padding: 12px 28px; font-weight: 700; font-size: 16px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .note { margin-top: 18px; color: #64748b; font-size: 13px; line-height: 1.7; }
+    @media (max-width: 640px) {
+      .page { padding-top: 40px; }
+      .card { padding: 24px; }
+      form { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card" aria-labelledby="title">
+      <h1 id="title">名刺管理ログイン</h1>
+      <form method="get" action="${safeGasUrl}">
+        <label for="authuser">Googleアカウント</label>
+        <input id="authuser" name="authuser" type="email" inputmode="email" autocomplete="username" placeholder="name@nextbrain.pro" pattern="^[^@\\s]+@(nextbrain\\.pro|nextbrain\\.biz)$" required>
+        <button type="submit">ログイン</button>
+      </form>
+      <div class="note">許可ドメイン: nextbrain.pro / nextbrain.biz<br>画面表示とGoogleログインセッションはGAS側で行います。</div>
+    </section>
+  </main>
+</body>
+</html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
+function escapeHtmlAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function json(body: unknown, status = 200): Response { return cors(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })); }
 interface AuthInspection { authorized: boolean; expectedConfigured: boolean; expectedLength: number; apiKeyHeaderPresent: boolean; receivedKeyLength: number; }
 function inspectApiKey(request: Request, env: Env): AuthInspection { const expected = String(env.BUSINESS_CARD_API_KEY || '').trim(); const receivedApiKey = String(request.headers.get('X-API-Key') || '').trim(); return { authorized: Boolean(expected) && receivedApiKey === expected, expectedConfigured: Boolean(expected), expectedLength: expected.length, apiKeyHeaderPresent: Boolean(receivedApiKey), receivedKeyLength: receivedApiKey.length }; }
