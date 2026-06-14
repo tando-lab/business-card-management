@@ -142,7 +142,7 @@ export default {
     if (request.method !== 'POST' || url.pathname !== '/api/storage') {
       return json({ ok: false, message: 'not found' }, 404);
     }
-    if (!env.API_KEY || request.headers.get('X-API-Key') !== env.API_KEY) {
+    if (!isAuthorized(request, env)) {
       return json({ ok: false, message: 'unauthorized' }, 401);
     }
 
@@ -458,4 +458,11 @@ function ok(req: StorageJsonRequest, data: NonNullable<StorageJsonResponse['data
 function error(req: Partial<StorageJsonRequest>, code: string, message: string): StorageJsonResponse { return { ok: false, apiVersion: API_VERSION, operation: req.operation || 'card.diagnostics', requestId: req.requestId || '', error: { code, message }, message }; }
 function statusForError(code?: string): number { if (code === 'UNAUTHORIZED') return 401; if (code === 'NOT_FOUND') return 404; if (code === 'CONFLICT') return 409; if (code === 'VALIDATION_ERROR' || code === 'BAD_REQUEST') return 400; return 500; }
 function json(body: unknown, status = 200): Response { return cors(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })); }
-function cors(response: Response, status?: number): Response { const headers = new Headers(response.headers); headers.set('Access-Control-Allow-Origin', '*'); headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key'); return new Response(response.body, { status: status ?? response.status, headers }); }
+function isAuthorized(request: Request, env: Env): boolean {
+  const expected = env.BUSINESS_CARD_API_TOKEN || '';
+  const authorization = request.headers.get('Authorization') || '';
+  if (!expected || !authorization.startsWith('Bearer ')) return false;
+  return authorization.slice('Bearer '.length).trim() === expected;
+}
+
+function cors(response: Response, status?: number): Response { const headers = new Headers(response.headers); headers.set('Access-Control-Allow-Origin', '*'); headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization'); return new Response(response.body, { status: status ?? response.status, headers }); }

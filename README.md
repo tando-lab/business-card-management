@@ -9,10 +9,10 @@ POST /api/storage
 GET  /api/health
 ```
 
-`POST /api/storage` は `X-API-Key` ヘッダー必須です。
+`POST /api/storage` は `Authorization: Bearer` ヘッダー必須です。
 
 ```text
-X-API-Key: <API_KEY>
+Authorization: Bearer <BUSINESS_CARD_API_TOKEN>
 ```
 
 ## 設定
@@ -29,10 +29,10 @@ X-API-Key: <API_KEY>
 ]
 ```
 
-APIキーはsecretとして設定します。
+名刺管理D1 API用の共有トークンは、Worker secretとして設定します。Cloudflare管理API用トークンとは別物です。
 
 ```bash
-npx wrangler secret put API_KEY
+npx wrangler secret put BUSINESS_CARD_API_TOKEN
 ```
 
 ## D1 migration
@@ -60,5 +60,5 @@ GAS `Script Properties`:
 ```text
 STORAGE_BACKEND=cloudflare_d1
 CLOUDFLARE_API_BASE_URL=https://<worker-name>.<account>.workers.dev
-CLOUDFLARE_API_KEY=<API_KEY>
+CLOUDFLARE_D1_API_TOKEN=<BUSINESS_CARD_API_TOKEN>
 ```

@@ -17,5 +17,5 @@ interface D1Database {
 
 interface Env {
   DB: D1Database;
-  API_KEY: string;
+  BUSINESS_CARD_API_TOKEN: string;
 }
