@@ -15,7 +15,6 @@ interface CardStorageRecord {
   deletedBy: string;
   companyName: string;
   companyNameKana: string;
-  displayName: string;
   lastName: string;
   firstName: string;
   lastNameKana: string;
@@ -108,7 +107,6 @@ interface DbRow {
   deleted_by?: string;
   company_name?: string;
   company_name_kana?: string;
-  display_name?: string;
   last_name?: string;
   first_name?: string;
   last_name_kana?: string;
@@ -175,7 +173,7 @@ export default {
     if (request.method === 'OPTIONS') return cors(json({ ok: true }), 204);
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/api/health') {
-      return json({ ok: true, service: 'business-card-d1-api', schemaVersion: 'r54', auth: { requiredHeader: 'X-API-Key', workerApiKeyConfigured: Boolean(String(env.BUSINESS_CARD_API_KEY || '').trim()) } });
+      return json({ ok: true, service: 'business-card-d1-api', schemaVersion: 'r55', auth: { requiredHeader: 'X-API-Key', workerApiKeyConfigured: Boolean(String(env.BUSINESS_CARD_API_KEY || '').trim()) } });
     }
     if (request.method !== 'POST' || url.pathname !== '/api/storage') return json({ ok: false, message: 'not found' }, 404);
     const auth = inspectApiKey(request, env);
@@ -253,14 +251,14 @@ async function searchCards(req: StorageJsonRequest, env: Env): Promise<StorageJs
 }
 async function diagnostics(req: StorageJsonRequest, env: Env): Promise<StorageJsonResponse> {
   const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM business_cards').first<{ count: number }>();
-  return ok(req, { backend: 'cloudflare_d1', diagnostics: { table: 'business_cards', schemaVersion: 'r54', count: count?.count ?? 0 } });
+  return ok(req, { backend: 'cloudflare_d1', diagnostics: { table: 'business_cards', schemaVersion: 'r55', count: count?.count ?? 0 } });
 }
 async function getRecordById(db: D1Database, id: string): Promise<CardStorageRecord | null> {
   const row = await db.prepare('SELECT * FROM business_cards WHERE record_id = ?').bind(id).first<DbRow>();
   return row ? rowToRecord(row) : null;
 }
 async function upsertRecord(db: D1Database, record: CardStorageRecord): Promise<void> {
-  const query = `INSERT INTO business_cards (record_id, record_status, revision, created_at, created_by, updated_at, updated_by, deleted_at, deleted_by, company_name, company_name_kana, display_name, last_name, first_name, last_name_kana, first_name_kana, department_name, title, phone_number, mobile_number, fax_number, email, postal_code, address_text, website_url, exchanged_by_last_name, exchanged_by_first_name, exchange_date, exchange_place, group_name, tags, memo, image_storage_provider, image_drive_file_id, image_url, original_image_drive_file_id, original_image_url, cropped_image_drive_file_id, cropped_image_url, image_file_name, image_mime_type, image_size_bytes, image_width, image_height, image_folder_id, image_quality_score, brightness_status, blur_status, frame_status, skew_status, contour_status, retake_required, retake_reason, quality_warnings, crop_box, ocr_text, ocr_status, ocr_language, ocr_processed_at, ocr_engine, ocr_error_message, ocr_source_image_type, search_key, search_text, name_sort_key, company_sort_key, email_lower, phone_digits, data_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(record_id) DO UPDATE SET
+  const query = `INSERT INTO business_cards (record_id, record_status, revision, created_at, created_by, updated_at, updated_by, deleted_at, deleted_by, company_name, company_name_kana, last_name, first_name, last_name_kana, first_name_kana, department_name, title, phone_number, mobile_number, fax_number, email, postal_code, address_text, website_url, exchanged_by_last_name, exchanged_by_first_name, exchange_date, exchange_place, group_name, tags, memo, image_storage_provider, image_drive_file_id, image_url, original_image_drive_file_id, original_image_url, cropped_image_drive_file_id, cropped_image_url, image_file_name, image_mime_type, image_size_bytes, image_width, image_height, image_folder_id, image_quality_score, brightness_status, blur_status, frame_status, skew_status, contour_status, retake_required, retake_reason, quality_warnings, crop_box, ocr_text, ocr_status, ocr_language, ocr_processed_at, ocr_engine, ocr_error_message, ocr_source_image_type, search_key, search_text, name_sort_key, company_sort_key, email_lower, phone_digits, data_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(record_id) DO UPDATE SET
     record_status=excluded.record_status,
     revision=excluded.revision,
     created_at=excluded.created_at,
@@ -271,7 +269,6 @@ async function upsertRecord(db: D1Database, record: CardStorageRecord): Promise<
     deleted_by=excluded.deleted_by,
     company_name=excluded.company_name,
     company_name_kana=excluded.company_name_kana,
-    display_name=excluded.display_name,
     last_name=excluded.last_name,
     first_name=excluded.first_name,
     last_name_kana=excluded.last_name_kana,
@@ -330,7 +327,7 @@ async function upsertRecord(db: D1Database, record: CardStorageRecord): Promise<
     phone_digits=excluded.phone_digits,
     data_json=excluded.data_json`;
   await db.prepare(query).bind(
-    record.recordId, record.recordStatus, Number(record.revision) || 1, record.createdAt, record.createdBy, record.updatedAt, record.updatedBy, record.deletedAt, record.deletedBy, record.companyName, record.companyNameKana, record.displayName, record.lastName, record.firstName, record.lastNameKana, record.firstNameKana, record.departmentName, record.title, record.phoneNumber, record.mobileNumber, record.faxNumber, record.email, record.postalCode, record.addressText, record.websiteUrl, record.exchangedByLastName, record.exchangedByFirstName, record.exchangeDate, record.exchangePlace, record.groupName, JSON.stringify(record.tags || []), record.memo, record.imageStorageProvider, record.imageDriveFileId, record.imageUrl, record.originalImageDriveFileId, record.originalImageUrl, record.croppedImageDriveFileId, record.croppedImageUrl, record.imageFileName, record.imageMimeType, record.imageSizeBytes, record.imageWidth, record.imageHeight, record.imageFolderId, record.imageQualityScore, record.brightnessStatus, record.blurStatus, record.frameStatus, record.skewStatus, record.contourStatus, record.retakeRequired ? 'TRUE' : '', record.retakeReason, JSON.stringify(record.qualityWarnings || []), record.cropBox ? JSON.stringify(record.cropBox) : '', record.ocrText, record.ocrStatus, record.ocrLanguage, record.ocrProcessedAt, record.ocrEngine, record.ocrErrorMessage, record.ocrSourceImageType, record.searchKey, record.searchText, record.nameSortKey, record.companySortKey, record.emailLower, record.phoneDigits,
+    record.recordId, record.recordStatus, Number(record.revision) || 1, record.createdAt, record.createdBy, record.updatedAt, record.updatedBy, record.deletedAt, record.deletedBy, record.companyName, record.companyNameKana, record.lastName, record.firstName, record.lastNameKana, record.firstNameKana, record.departmentName, record.title, record.phoneNumber, record.mobileNumber, record.faxNumber, record.email, record.postalCode, record.addressText, record.websiteUrl, record.exchangedByLastName, record.exchangedByFirstName, record.exchangeDate, record.exchangePlace, record.groupName, JSON.stringify(record.tags || []), record.memo, record.imageStorageProvider, record.imageDriveFileId, record.imageUrl, record.originalImageDriveFileId, record.originalImageUrl, record.croppedImageDriveFileId, record.croppedImageUrl, record.imageFileName, record.imageMimeType, record.imageSizeBytes, record.imageWidth, record.imageHeight, record.imageFolderId, record.imageQualityScore, record.brightnessStatus, record.blurStatus, record.frameStatus, record.skewStatus, record.contourStatus, record.retakeRequired ? 'TRUE' : '', record.retakeReason, JSON.stringify(record.qualityWarnings || []), record.cropBox ? JSON.stringify(record.cropBox) : '', record.ocrText, record.ocrStatus, record.ocrLanguage, record.ocrProcessedAt, record.ocrEngine, record.ocrErrorMessage, record.ocrSourceImageType, record.searchKey, record.searchText, record.nameSortKey, record.companySortKey, record.emailLower, record.phoneDigits,
     JSON.stringify(record)
   ).run();
 }
@@ -348,7 +345,6 @@ function rowToRecord(row: DbRow): CardStorageRecord {
     deletedBy: s(row.deleted_by),
     companyName: s(row.company_name),
     companyNameKana: s(row.company_name_kana),
-    displayName: s(row.display_name),
     lastName: s(row.last_name),
     firstName: s(row.first_name),
     lastNameKana: s(row.last_name_kana),
@@ -420,7 +416,6 @@ function normalizeRecord(value: Partial<CardStorageRecord>): CardStorageRecord {
     deletedBy: s(value.deletedBy),
     companyName: s(value.companyName),
     companyNameKana: s(value.companyNameKana),
-    displayName: s(value.displayName),
     lastName: s(value.lastName),
     firstName: s(value.firstName),
     lastNameKana: s(value.lastNameKana),
@@ -478,7 +473,6 @@ function normalizeRecord(value: Partial<CardStorageRecord>): CardStorageRecord {
     emailLower: s(value.emailLower),
     phoneDigits: s(value.phoneDigits),
   };
-  record.displayName = record.displayName || [record.lastName, record.firstName].filter(Boolean).join(' ');
   finalizeSearchFields(record);
   return record;
 }
@@ -491,12 +485,12 @@ function normalizePartialRecord(value: Partial<CardStorageRecord>): Partial<Card
 function finalizeSearchFields(record: CardStorageRecord): void {
   record.searchText = record.searchText || buildSearchText(record);
   record.searchKey = record.searchKey || record.searchText;
-  record.nameSortKey = record.nameSortKey || normalizeText(record.displayName || `${record.lastNameKana} ${record.firstNameKana}`);
+  record.nameSortKey = record.nameSortKey || normalizeText([record.lastName, record.firstName].filter(Boolean).join(' ') || [record.lastNameKana, record.firstNameKana].filter(Boolean).join(' '));
   record.companySortKey = record.companySortKey || normalizeText(record.companyNameKana || record.companyName);
   record.emailLower = record.emailLower || record.email.toLowerCase();
   record.phoneDigits = record.phoneDigits || s(`${record.phoneNumber} ${record.mobileNumber} ${record.faxNumber}`).replace(/\D+/g, '');
 }
-function buildSearchText(record: Partial<CardStorageRecord>): string { return normalizeText([record.companyName, record.companyNameKana, record.displayName, record.lastName, record.firstName, record.lastNameKana, record.firstNameKana, record.departmentName, record.title, record.phoneNumber, record.mobileNumber, record.faxNumber, record.email, record.postalCode, record.addressText, record.websiteUrl, record.exchangedByLastName, record.exchangedByFirstName, record.exchangeDate, record.exchangePlace, record.groupName, record.tags, record.memo, record.imageStorageProvider, record.originalImageUrl, record.croppedImageUrl, record.imageFileName, record.imageMimeType, record.imageSizeBytes, record.imageWidth, record.imageHeight, record.imageFolderId, record.imageQualityScore, record.brightnessStatus, record.blurStatus, record.frameStatus, record.skewStatus, record.contourStatus, record.retakeRequired, record.retakeReason, record.qualityWarnings, record.cropBox, record.ocrText, record.ocrStatus, record.ocrLanguage, record.ocrProcessedAt, record.ocrEngine, record.ocrErrorMessage, record.ocrSourceImageType].map((value) => Array.isArray(value) ? value.join(' ') : String(value || '')).join(' ')); }
+function buildSearchText(record: Partial<CardStorageRecord>): string { return normalizeText([record.companyName, record.companyNameKana, record.lastName, record.firstName, record.lastNameKana, record.firstNameKana, record.departmentName, record.title, record.phoneNumber, record.mobileNumber, record.faxNumber, record.email, record.postalCode, record.addressText, record.websiteUrl, record.exchangedByLastName, record.exchangedByFirstName, record.exchangeDate, record.exchangePlace, record.groupName, record.tags, record.memo, record.imageStorageProvider, record.originalImageUrl, record.croppedImageUrl, record.imageFileName, record.imageMimeType, record.imageSizeBytes, record.imageWidth, record.imageHeight, record.imageFolderId, record.imageQualityScore, record.brightnessStatus, record.blurStatus, record.frameStatus, record.skewStatus, record.contourStatus, record.retakeRequired, record.retakeReason, record.qualityWarnings, record.cropBox, record.ocrText, record.ocrStatus, record.ocrLanguage, record.ocrProcessedAt, record.ocrEngine, record.ocrErrorMessage, record.ocrSourceImageType].map((value) => Array.isArray(value) ? value.join(' ') : String(value || '')).join(' ')); }
 function parseStringArray(value: string): string[] { try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parsed.map(s).filter(Boolean); } catch (_err) { } return splitTags(value); }
 function parseCropBox(value: string): CardCropBox | null { try { const parsed = JSON.parse(value) as Partial<CardCropBox>; return { x: Number(parsed.x) || 0, y: Number(parsed.y) || 0, width: Number(parsed.width) || 0, height: Number(parsed.height) || 0, rotate: Number(parsed.rotate) || 0 }; } catch (_err) { return null; } }
 function splitTags(value: string): string[] { return s(value).split(/[、,\n]/).map((x) => x.trim()).filter(Boolean); }

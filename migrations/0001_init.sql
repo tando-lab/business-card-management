@@ -1,4 +1,4 @@
--- r54 canonical fields schema. 過去のSpread/DB列互換は考慮しません。
+-- r55 canonical fields schema. 過去のSpread/DB列互換は考慮しません。
 DROP TABLE IF EXISTS business_cards;
 CREATE TABLE business_cards (
   record_id TEXT PRIMARY KEY,
@@ -12,7 +12,6 @@ CREATE TABLE business_cards (
   deleted_by TEXT NOT NULL DEFAULT '',
   company_name TEXT NOT NULL DEFAULT '',
   company_name_kana TEXT NOT NULL DEFAULT '',
-  display_name TEXT NOT NULL DEFAULT '',
   last_name TEXT NOT NULL DEFAULT '',
   first_name TEXT NOT NULL DEFAULT '',
   last_name_kana TEXT NOT NULL DEFAULT '',
