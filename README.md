@@ -9,10 +9,10 @@ POST /api/storage
 GET  /api/health
 ```
 
-`POST /api/storage` は `Authorization: Bearer` ヘッダー必須です。
+`POST /api/storage` は `X-API-Key` ヘッダー必須です。
 
 ```text
-Authorization: Bearer <BUSINESS_CARD_API_TOKEN>
+X-API-Key: <BUSINESS_CARD_API_KEY>
 ```
 
 ## 設定
@@ -32,7 +32,7 @@ Authorization: Bearer <BUSINESS_CARD_API_TOKEN>
 名刺管理D1 API用の共有トークンは、Worker secretとして設定します。Cloudflare管理API用トークンとは別物です。
 
 ```bash
-npx wrangler secret put BUSINESS_CARD_API_TOKEN
+npx wrangler secret put BUSINESS_CARD_API_KEY
 ```
 
 ## D1 migration
@@ -60,7 +60,7 @@ GAS `Script Properties`:
 ```text
 STORAGE_BACKEND=cloudflare_d1
 CLOUDFLARE_API_BASE_URL=https://<worker-name>.<account>.workers.dev
-CLOUDFLARE_D1_API_TOKEN=<BUSINESS_CARD_API_TOKEN>
+CLOUDFLARE_D1_API_KEY=<BUSINESS_CARD_API_KEY>
 ```
 
 ## r49: Cloudflare build の npm clean-install 対策
@@ -87,4 +87,18 @@ D1 database_name: business-card-management-db
 D1 database_id: f0f4b0db-c142-4d62-a4fb-c97eccb335a3
 ```
 
-Cloudflareの「ユーザー API トークン」はデプロイやCloudflare管理API用です。名刺管理アプリの `BUSINESS_CARD_API_TOKEN` は別の共有秘密トークンとしてWorker secretに設定してください。
+Cloudflareの「ユーザー API トークン」はデプロイやCloudflare管理API用です。名刺管理アプリの `BUSINESS_CARD_API_KEY` は別の共有秘密キーとしてWorker secretに設定してください。
+
+## r53: X-API-Key 認証ヘッダー統一
+
+Cloudflare D1 API の認証は次に統一しています。
+
+```text
+X-API-Key: <BUSINESS_CARD_API_KEY>
+```
+
+`Authorization: Bearer` は使用しません。GAS の `CLOUDFLARE_D1_API_KEY` と Worker の `BUSINESS_CARD_API_KEY` には、Cloudflare管理用APIトークンではなく、名刺管理アプリ用に作成した同じ共有キーを設定してください。前後空白はGAS側・Worker側の双方でtrimします。
+
+認証エラー時は、キー値を返さず、ヘッダー有無・受信キー長・期待キー長のみを診断情報として返します。
+
+`business-card-service` manifest includes `https://www.googleapis.com/auth/script.external_request` for `UrlFetchApp.fetch()`。

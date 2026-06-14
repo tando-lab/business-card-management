@@ -86,7 +86,7 @@ interface StorageJsonResponse {
   operation: StorageOperation;
   requestId: string;
   data?: { record?: CardStorageRecord; records?: CardStorageRecord[]; recordId?: string; revision?: string; createdAt?: string; updatedAt?: string; backend?: StorageBackend; diagnostics?: Record<string, unknown> };
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: Array<{ field?: string; reason?: string }> };
   message?: string;
 }
 interface DbRow {
@@ -137,13 +137,14 @@ export default {
     if (request.method === 'OPTIONS') return cors(json({ ok: true }), 204);
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/api/health') {
-      return json({ ok: true, service: 'business-card-d1-api' });
+      return json({ ok: true, service: 'business-card-d1-api', auth: { requiredHeader: 'X-API-Key', workerApiKeyConfigured: Boolean(String(env.BUSINESS_CARD_API_KEY || '').trim()) } });
     }
     if (request.method !== 'POST' || url.pathname !== '/api/storage') {
       return json({ ok: false, message: 'not found' }, 404);
     }
-    if (!isAuthorized(request, env)) {
-      return json({ ok: false, message: 'unauthorized' }, 401);
+    const auth = inspectApiKey(request, env);
+    if (!auth.authorized) {
+      return json(unauthorizedResponse(auth), 401);
     }
 
     let body: StorageJsonRequest;
@@ -458,11 +459,52 @@ function ok(req: StorageJsonRequest, data: NonNullable<StorageJsonResponse['data
 function error(req: Partial<StorageJsonRequest>, code: string, message: string): StorageJsonResponse { return { ok: false, apiVersion: API_VERSION, operation: req.operation || 'card.diagnostics', requestId: req.requestId || '', error: { code, message }, message }; }
 function statusForError(code?: string): number { if (code === 'UNAUTHORIZED') return 401; if (code === 'NOT_FOUND') return 404; if (code === 'CONFLICT') return 409; if (code === 'VALIDATION_ERROR' || code === 'BAD_REQUEST') return 400; return 500; }
 function json(body: unknown, status = 200): Response { return cors(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })); }
-function isAuthorized(request: Request, env: Env): boolean {
-  const expected = env.BUSINESS_CARD_API_TOKEN || '';
-  const authorization = request.headers.get('Authorization') || '';
-  if (!expected || !authorization.startsWith('Bearer ')) return false;
-  return authorization.slice('Bearer '.length).trim() === expected;
+interface AuthInspection {
+  authorized: boolean;
+  expectedConfigured: boolean;
+  expectedLength: number;
+  apiKeyHeaderPresent: boolean;
+  receivedKeyLength: number;
 }
 
-function cors(response: Response, status?: number): Response { const headers = new Headers(response.headers); headers.set('Access-Control-Allow-Origin', '*'); headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization'); return new Response(response.body, { status: status ?? response.status, headers }); }
+function inspectApiKey(request: Request, env: Env): AuthInspection {
+  const expected = String(env.BUSINESS_CARD_API_KEY || '').trim();
+  const receivedApiKey = String(request.headers.get('X-API-Key') || '').trim();
+  return {
+    authorized: Boolean(expected) && receivedApiKey === expected,
+    expectedConfigured: Boolean(expected),
+    expectedLength: expected.length,
+    apiKeyHeaderPresent: Boolean(receivedApiKey),
+    receivedKeyLength: receivedApiKey.length
+  };
+}
+
+function unauthorizedResponse(auth: AuthInspection): StorageJsonResponse {
+  const message = 'unauthorized: X-API-Key が未設定または一致しません。';
+  return {
+    ok: false,
+    apiVersion: API_VERSION,
+    operation: 'card.diagnostics',
+    requestId: '',
+    error: {
+      code: 'UNAUTHORIZED',
+      message,
+      details: [
+        { field: 'X-API-Key', reason: auth.apiKeyHeaderPresent ? 'header_present' : 'header_missing' },
+        { field: 'BUSINESS_CARD_API_KEY', reason: auth.expectedConfigured ? 'worker_api_key_configured' : 'worker_api_key_missing' }
+      ]
+    },
+    data: {
+      diagnostics: {
+        requiredHeader: 'X-API-Key',
+        apiKeyHeaderPresent: auth.apiKeyHeaderPresent,
+        workerApiKeyConfigured: auth.expectedConfigured,
+        receivedKeyLength: auth.receivedKeyLength,
+        expectedKeyLength: auth.expectedLength
+      }
+    },
+    message
+  };
+}
+
+function cors(response: Response, status?: number): Response { const headers = new Headers(response.headers); headers.set('Access-Control-Allow-Origin', '*'); headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key'); return new Response(response.body, { status: status ?? response.status, headers }); }
