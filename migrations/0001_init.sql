@@ -1,12 +1,11 @@
--- business-card-cloudflare initial D1 schema, based on business-card-service r46 sheet_fields.json.
-PRAGMA foreign_keys = ON;
-
+-- Storage JSON Protocol v1 用のD1スキーマです。
+-- 既存の r46 business_cards と共存しやすいように旧主要列も保持し、正準レコード全体は data_json に保存します。
 CREATE TABLE IF NOT EXISTS business_cards (
   id TEXT PRIMARY KEY,
-  record_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (record_status IN ('ACTIVE', 'DELETED')),
+  record_status TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+  revision INTEGER NOT NULL DEFAULT 1,
 
   company TEXT NOT NULL DEFAULT '',
   name TEXT NOT NULL DEFAULT '',
@@ -30,15 +29,8 @@ CREATE TABLE IF NOT EXISTS business_cards (
   cropped_image_url TEXT NOT NULL DEFAULT '',
   cropped_image_file_id TEXT NOT NULL DEFAULT '',
 
-  quality_score REAL NOT NULL DEFAULT 0,
-  brightness_status TEXT NOT NULL DEFAULT '',
-  blur_status TEXT NOT NULL DEFAULT '',
-  framing_status TEXT NOT NULL DEFAULT '',
-  tilt_status TEXT NOT NULL DEFAULT '',
-  contour_status TEXT NOT NULL DEFAULT '',
+  quality_score TEXT NOT NULL DEFAULT '',
   retake_decision TEXT NOT NULL DEFAULT '',
-  crop_points_json TEXT NOT NULL DEFAULT '',
-
   ocr_text TEXT NOT NULL DEFAULT '',
   ocr_status TEXT NOT NULL DEFAULT '',
   ocr_language TEXT NOT NULL DEFAULT 'ja',
@@ -46,17 +38,13 @@ CREATE TABLE IF NOT EXISTS business_cards (
 
   registered_by TEXT NOT NULL DEFAULT '',
   updated_by TEXT NOT NULL DEFAULT '',
-  delete_flag TEXT NOT NULL DEFAULT '',
   deleted_at TEXT NOT NULL DEFAULT '',
   deleted_by TEXT NOT NULL DEFAULT '',
-  search_key TEXT NOT NULL DEFAULT ''
+  search_key TEXT NOT NULL DEFAULT '',
+  search_text TEXT NOT NULL DEFAULT '',
+  data_json TEXT NOT NULL DEFAULT '{}'
 );
 
-CREATE INDEX IF NOT EXISTS idx_business_cards_active_updated
-  ON business_cards(record_status, updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_business_cards_owner
-  ON business_cards(owner);
-CREATE INDEX IF NOT EXISTS idx_business_cards_tags
-  ON business_cards(tags);
-CREATE INDEX IF NOT EXISTS idx_business_cards_search_key
-  ON business_cards(search_key);
+CREATE INDEX IF NOT EXISTS idx_business_cards_active_updated ON business_cards(record_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_business_cards_search_key ON business_cards(search_key);
+CREATE INDEX IF NOT EXISTS idx_business_cards_search_text ON business_cards(search_text);

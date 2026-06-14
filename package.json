@@ -1,20 +1,15 @@
 {
-  "name": "business-card-cloudflare-worker",
-  "version": "0.3.0-worker-ts-r46-port-route-split",
+  "name": "business-card-cloudflare-d1-api",
+  "version": "0.1.0-r47",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.client.json && tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.client.json && tsc -p tsconfig.json && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "d1:create": "wrangler d1 create business-card-db",
-    "d1:migrate:local": "wrangler d1 migrations apply business-card-db --local",
-    "d1:migrate:remote": "wrangler d1 migrations apply business-card-db --remote",
-    "types:cloudflare": "wrangler types"
+    "build": "tsc -p tsconfig.json",
+    "deploy": "npm run build && npx wrangler deploy",
+    "check": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "typescript": "5.9.3",
-    "wrangler": "4.100.0"
+    "typescript": "^5.8.0",
+    "wrangler": "^4.0.0"
   }
 }
