@@ -1,15 +1,15 @@
 {
   "name": "business-card-cloudflare-d1-api",
-  "version": "0.1.0-r48",
+  "version": "0.1.0-r49",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "deploy": "npm run build && npx wrangler deploy",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "typescript": "^5.8.0",
-    "wrangler": "^4.0.0"
+    "typescript": "5.9.3",
+    "wrangler": "4.100.0"
   }
 }

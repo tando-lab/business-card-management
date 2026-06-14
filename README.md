@@ -62,3 +62,9 @@ STORAGE_BACKEND=cloudflare_d1
 CLOUDFLARE_API_BASE_URL=https://<worker-name>.<account>.workers.dev
 CLOUDFLARE_D1_API_TOKEN=<BUSINESS_CARD_API_TOKEN>
 ```
+
+## r49: Cloudflare build の npm clean-install 対策
+
+Cloudflare build で `npm clean-install --progress=false` が長時間経過後に `Exit handler never called!` で失敗する場合、`package-lock.json` の `resolved` URL が内部レジストリを指していないか確認してください。
+
+r49では `package-lock.json` の `resolved` URL を `https://registry.npmjs.org/` に統一し、`.npmrc` でも public npm registry を明示しています。
