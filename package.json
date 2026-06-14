@@ -1,6 +1,6 @@
 {
   "name": "business-card-cloudflare-d1-api",
-  "version": "0.1.0-r53",
+  "version": "0.1.0-r54",
   "private": true,
   "type": "module",
   "scripts": {
